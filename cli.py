@@ -35,33 +35,36 @@ def list_draft_content():
 	_print_json(draft_response)
 
 
+def _first_non_empty_value(data, keys):
+	if isinstance(data, dict):
+		for key in keys:
+			value = data.get(key)
+			if value not in (None, ''):
+				return value
+
+		for value in data.values():
+			found = _first_non_empty_value(value, keys)
+			if found not in (None, ''):
+				return found
+
+	if isinstance(data, list):
+		for item in data:
+			found = _first_non_empty_value(item, keys)
+			if found not in (None, ''):
+				return found
+
+	return ''
+
+
 def _extract_publish_fields(response_data):
 	if not isinstance(response_data, dict):
 		return '', ''
 
-	# Backend kadang mengembalikan payload publish di data.data
-	result_data = response_data.get('data')
-	if isinstance(result_data, dict):
-		payload = result_data
-	else:
-		payload = response_data
-
-	platform_post_id = (
-		payload.get('facebook_post_id')
-		or payload.get('post_id')
-		or payload.get('id')
-		or ''
-	)
-	published_url = (
-		payload.get('facebook_post_url')
-		or payload.get('url')
-		or payload.get('post_url')
-		or payload.get('permalink_url')
-		or ''
-	)
+	platform_post_id = _first_non_empty_value(response_data, ('facebook_post_id', 'post_id', 'id'))
+	published_url = _first_non_empty_value(response_data, ('facebook_post_url', 'url', 'post_url', 'permalink_url'))
 
 	published_url = _normalize_public_facebook_url(str(published_url).strip())
-	return str(platform_post_id), published_url
+	return str(platform_post_id).strip(), published_url
 
 
 def _normalize_public_facebook_url(url):

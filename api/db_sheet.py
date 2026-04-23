@@ -6,6 +6,41 @@ import json
 from api.config.app import SHEET_ID
 from api.response.response_template import response_template
 
+
+def _first_non_empty_value(data, keys):
+    if isinstance(data, dict):
+        for key in keys:
+            value = data.get(key)
+            if value not in (None, ''):
+                return value
+
+        for value in data.values():
+            found = _first_non_empty_value(value, keys)
+            if found not in (None, ''):
+                return found
+
+    if isinstance(data, list):
+        for item in data:
+            found = _first_non_empty_value(item, keys)
+            if found not in (None, ''):
+                return found
+
+    return ''
+
+
+def _normalize_public_facebook_url(url):
+    if not url:
+        return ''
+
+    if url.startswith('https://'):
+        return url
+
+    if url.startswith('/'):
+        return f'https://www.facebook.com{url}'
+
+    return f'https://www.facebook.com/{url.lstrip("/")}'
+
+
 class SheetDB:
     def __init__(self, sheet_name='Content', sheet_key=None):
         self.sheet_name = sheet_name
@@ -248,6 +283,41 @@ class SheetDB:
 
         # updated_at otomatis diisi ketika caller belum mengirim nilai.
         data_to_update = {field: payload.get(field, '') for field in updatable_fields}
+
+        # Sinkronkan kolom URL agar tidak ada yang kosong ketika salah satu terisi.
+        url_publish_value = str(data_to_update.get('url_publish', '') or '').strip()
+        post_url_value = str(data_to_update.get('post_url', '') or '').strip()
+
+        if not url_publish_value and post_url_value:
+            data_to_update['url_publish'] = post_url_value
+        elif not post_url_value and url_publish_value:
+            data_to_update['post_url'] = url_publish_value
+
+        # Fallback ambil id/url dari publish_response saat caller belum mengirim field inti.
+        publish_response_value = data_to_update.get('publish_response')
+        if isinstance(publish_response_value, (dict, list)):
+            extracted_post_id = _first_non_empty_value(publish_response_value, ('facebook_post_id', 'post_id', 'id'))
+            extracted_post_url = _first_non_empty_value(
+                publish_response_value,
+                ('facebook_post_url', 'url', 'post_url', 'permalink_url'),
+            )
+
+            if not str(data_to_update.get('platform_post_id', '')).strip() and extracted_post_id not in (None, ''):
+                data_to_update['platform_post_id'] = str(extracted_post_id).strip()
+
+            normalized_extracted_url = _normalize_public_facebook_url(str(extracted_post_url).strip())
+            if normalized_extracted_url:
+                if not str(data_to_update.get('url_publish', '')).strip():
+                    data_to_update['url_publish'] = normalized_extracted_url
+                if not str(data_to_update.get('post_url', '')).strip():
+                    data_to_update['post_url'] = normalized_extracted_url
+
+        # Pastikan kedua kolom URL tetap sinkron setelah fallback parsing response.
+        if not str(data_to_update.get('url_publish', '')).strip() and str(data_to_update.get('post_url', '')).strip():
+            data_to_update['url_publish'] = data_to_update['post_url']
+        if not str(data_to_update.get('post_url', '')).strip() and str(data_to_update.get('url_publish', '')).strip():
+            data_to_update['post_url'] = data_to_update['url_publish']
+
         if not str(data_to_update.get('updated_at', '')).strip():
             data_to_update['updated_at'] = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')
 
