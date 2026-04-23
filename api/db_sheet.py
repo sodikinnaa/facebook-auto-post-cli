@@ -1,6 +1,7 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
+from datetime import datetime
 import json
 from api.config.app import SHEET_ID
 from api.response.response_template import response_template
@@ -200,4 +201,104 @@ class SheetDB:
             )
 
     # update status content and antoher after publish content
+    def updateStatusAfterPublish(self, row_number, payload):
+        credential_path = self._get_credential_path()
+
+        if not credential_path.exists():
+            return response_template(
+                status='error',
+                message=f'Credential file tidak ditemukan: {credential_path}',
+                data={},
+                meta={
+                    'sheet_name': self.sheet_name,
+                    'credential_path': str(credential_path),
+                },
+            )
+
+        if not isinstance(row_number, int) or row_number < 2:
+            return response_template(
+                status='error',
+                message='row_number harus integer dan minimal 2',
+                data={},
+                meta={
+                    'sheet_name': self.sheet_name,
+                },
+            )
+
+        if not isinstance(payload, dict):
+            return response_template(
+                status='error',
+                message='payload harus berupa object/dict',
+                data={},
+                meta={
+                    'sheet_name': self.sheet_name,
+                },
+            )
+
+        updatable_fields = [
+            'status',
+            'tanggal_publish',
+            'url_publish',
+            'platform_post_id',
+            'publish_response',
+            'last_error',
+            'updated_at',
+        ]
+
+        # updated_at otomatis diisi ketika caller belum mengirim nilai.
+        data_to_update = {field: payload.get(field, '') for field in updatable_fields}
+        if not str(data_to_update.get('updated_at', '')).strip():
+            data_to_update['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+
+        # Simpan publish_response sebagai string agar aman disimpan di sel spreadsheet.
+        if isinstance(data_to_update.get('publish_response'), (dict, list)):
+            data_to_update['publish_response'] = json.dumps(data_to_update['publish_response'], ensure_ascii=False)
+
+        try:
+            sheet = self._get_sheet_instance(credential_path)
+            headers = sheet.row_values(1)
+            header_to_col_index = {header: idx + 1 for idx, header in enumerate(headers)}
+
+            updated_fields = {}
+            for field, value in data_to_update.items():
+                col_index = header_to_col_index.get(field)
+                if not col_index:
+                    continue
+                safe_value = '' if value is None else str(value)
+                sheet.update_cell(row_number, col_index, safe_value)
+                updated_fields[field] = safe_value
+
+            if not updated_fields:
+                return response_template(
+                    status='error',
+                    message='Tidak ada field yang bisa diupdate pada header sheet',
+                    data={},
+                    meta={
+                        'sheet_name': self.sheet_name,
+                        'row_number': row_number,
+                    },
+                )
+
+            return response_template(
+                status='success',
+                message='Status publish berhasil diupdate',
+                data={
+                    'row_number': row_number,
+                    'updated_fields': updated_fields,
+                },
+                meta={
+                    'sheet_name': self.sheet_name,
+                },
+            )
+        except Exception as err:
+            return response_template(
+                status='error',
+                message=str(err),
+                data={},
+                meta={
+                    'sheet_name': self.sheet_name,
+                    'credential_path': str(credential_path),
+                    'row_number': row_number,
+                },
+            )
     
