@@ -41,7 +41,5 @@ _load_dotenv()
 
 BEARER_SOCIAL_MEDIA_POST = os.getenv('BEARER_SOCIAL_MEDIA_POST', '')
 ENDPOINT_SOCIAL_MEDIA_POST = os.getenv('ENDPOINT_SOCIAL_MEDIA_POST', '')
-PAGE_ID = os.getenv('PAGE_ID', '')
-PAGE_TOKEN = os.getenv('PAGE_TOKEN', '')
 
 
