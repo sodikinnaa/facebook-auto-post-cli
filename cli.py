@@ -60,11 +60,35 @@ def _extract_publish_fields(response_data):
 	if not isinstance(response_data, dict):
 		return '', ''
 
-	platform_post_id = _first_non_empty_value(response_data, ('facebook_post_id', 'post_id', 'id'))
-	published_url = _first_non_empty_value(response_data, ('facebook_post_url', 'url', 'post_url', 'permalink_url'))
+	platform_post_id = _first_non_empty_value(response_data, ('facebook_post_id', 'post_id', 'id', 'job_id'))
+	published_url = _first_non_empty_value(response_data, ('facebook_post_url', 'url', 'post_url', 'permalink_url', 'status_url'))
 
 	published_url = _normalize_public_facebook_url(str(published_url).strip())
 	return str(platform_post_id).strip(), published_url
+
+
+def _is_video_processing_response(response_data):
+	if not isinstance(response_data, dict):
+		return False
+
+	status_value = str(_first_non_empty_value(response_data, ('status', 'video_status'))).strip().lower()
+	phase_status = str(_first_non_empty_value(response_data, ('processing_phase',))).strip().lower()
+	processing_hint = str(_first_non_empty_value(response_data, ('status_url', 'job_id'))).strip()
+
+	if status_value in ('processing', 'in_progress', 'queued', 'not_started'):
+		return True
+
+	if isinstance(response_data.get('video_processing_status'), dict):
+		inner_video_status = str(
+			_first_non_empty_value(response_data.get('video_processing_status'), ('status', 'video_status'))
+		).strip().lower()
+		if inner_video_status in ('processing', 'in_progress', 'queued', 'not_started'):
+			return True
+
+	if phase_status and phase_status in ('processing', 'in_progress', 'queued', 'not_started'):
+		return True
+
+	return bool(processing_hint and not _first_non_empty_value(response_data, ('facebook_post_url', 'permalink_url')))
 
 
 def _normalize_public_facebook_url(url):
@@ -119,10 +143,14 @@ def publish_draft_content():
 		is_success = post_result.get('status') == 'success'
 		post_data = post_result.get('data')
 		platform_post_id, published_url = _extract_publish_fields(post_data)
+		is_processing_video = _is_video_processing_response(post_data)
 
 		now_utc = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')
 		if is_success and is_dry_run:
 			new_status = 'draft'
+			tanggal_publish = ''
+		elif is_success and is_processing_video and not is_dry_run:
+			new_status = 'processing'
 			tanggal_publish = ''
 		else:
 			new_status = 'published' if is_success else 'failed'

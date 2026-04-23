@@ -296,10 +296,10 @@ class SheetDB:
         # Fallback ambil id/url dari publish_response saat caller belum mengirim field inti.
         publish_response_value = data_to_update.get('publish_response')
         if isinstance(publish_response_value, (dict, list)):
-            extracted_post_id = _first_non_empty_value(publish_response_value, ('facebook_post_id', 'post_id', 'id'))
+            extracted_post_id = _first_non_empty_value(publish_response_value, ('facebook_post_id', 'post_id', 'id', 'job_id'))
             extracted_post_url = _first_non_empty_value(
                 publish_response_value,
-                ('facebook_post_url', 'url', 'post_url', 'permalink_url'),
+                ('facebook_post_url', 'url', 'post_url', 'permalink_url', 'status_url'),
             )
 
             if not str(data_to_update.get('platform_post_id', '')).strip() and extracted_post_id not in (None, ''):
