@@ -8,24 +8,29 @@ class SheetDB:
     def __init__(self, sheet_name='Content'):
         self.sheet_name = sheet_name
         self.content_columns = [
-            'id-website',
-            'topik',
-            'tanggal_create',
-            'target_audience',
-            'category',
-            'keyword',
-            'judul',
-            'meta_description',
-            'aff_link',
-            'content',
-            'thumbnail_url',
+            'post_id',
+            'source_ref',
+            'content_type',
+            'message',
+            'image_urls',
+            'video_url',
+            'video_file_path',
+            'request_id',
+            'dry_run',
+            'page_id',
+            'credential_key',
             'status',
             'tanggal_publish',
             'url_publish',
+            'platform_post_id',
+            'publish_response',
+            'last_error',
+            'created_at',
+            'updated_at',
         ]
 
     def _get_credential_path(self):
-        base_dir = Path(__file__).resolve().parent.parent / 'credential'
+        base_dir = Path(__file__).resolve().parent.parent / 'credentials'
         candidates = [
             base_dir / 'sheet' / 'user_credential.json',
             base_dir / 'user_credential.json',

@@ -39,32 +39,9 @@ def _load_dotenv():
 
 _load_dotenv()
 
-BEARER_TOKEN = os.getenv('BEARER_TOKEN', '')
+BEARER_SOCIAL_MEDIA_POST = os.getenv('BEARER_SOCIAL_MEDIA_POST', '')
+ENDPOINT_SOCIAL_MEDIA_POST = os.getenv('ENDPOINT_SOCIAL_MEDIA_POST', '')
 PAGE_ID = os.getenv('PAGE_ID', '')
 PAGE_TOKEN = os.getenv('PAGE_TOKEN', '')
-FB_GRAPH_API_VERSION = os.getenv('FB_GRAPH_API_VERSION', 'v20.0')
-OPENAI_API_URL = os.getenv('OPENAI_API_URL', 'https://api.openai.com/v1')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-
-
-def get_auth_config():
-	return {
-		'bearer_token': BEARER_TOKEN,
-	}
-
-
-def get_openai_config():
-	return {
-		'api_url': OPENAI_API_URL,
-		'api_key': OPENAI_API_KEY,
-	}
-
-
-def get_facebook_config():
-	return {
-		'page_id': PAGE_ID,
-		'page_token': PAGE_TOKEN,
-		'graph_api_version': FB_GRAPH_API_VERSION,
-	}
 
 

@@ -1,5 +1,9 @@
-print(''' =============================================
-| Facebook Auto Post Monitoring |
-      Masukan pilihan anda 
-      1. cek credential Google Sheet
-      2. Validasi variabel environment''')
+from api.backend import SociamediaPostBackend
+from api.db_sheet import SheetDB
+import json 
+
+sheet_db = SheetDB()
+
+# get data from google sheet
+sheet_response = sheet_db.getSheetData()
+print(json.dumps(sheet_response))
