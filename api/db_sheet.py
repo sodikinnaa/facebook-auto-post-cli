@@ -1,7 +1,7 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 import json
 from api.config.app import SHEET_ID
 from api.response.response_template import response_template
@@ -239,6 +239,7 @@ class SheetDB:
             'status',
             'tanggal_publish',
             'url_publish',
+            'post_url',
             'platform_post_id',
             'publish_response',
             'last_error',
@@ -248,7 +249,7 @@ class SheetDB:
         # updated_at otomatis diisi ketika caller belum mengirim nilai.
         data_to_update = {field: payload.get(field, '') for field in updatable_fields}
         if not str(data_to_update.get('updated_at', '')).strip():
-            data_to_update['updated_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+            data_to_update['updated_at'] = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')
 
         # Simpan publish_response sebagai string agar aman disimpan di sel spreadsheet.
         if isinstance(data_to_update.get('publish_response'), (dict, list)):
