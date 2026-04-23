@@ -41,5 +41,6 @@ _load_dotenv()
 
 BEARER_SOCIAL_MEDIA_POST = os.getenv('BEARER_SOCIAL_MEDIA_POST', '')
 ENDPOINT_SOCIAL_MEDIA_POST = os.getenv('ENDPOINT_SOCIAL_MEDIA_POST', '')
+SHEET_ID = os.getenv('SHEET_ID', '')
 
 

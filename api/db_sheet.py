@@ -2,11 +2,13 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
 import json
+from api.config.app import SHEET_ID
 from api.response.response_template import response_template
 
 class SheetDB:
-    def __init__(self, sheet_name='Content'):
+    def __init__(self, sheet_name='Content', sheet_key=None):
         self.sheet_name = sheet_name
+        self.sheet_key = sheet_key or SHEET_ID
         self.content_columns = [
             'post_id',
             'source_ref',
@@ -84,7 +86,7 @@ class SheetDB:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         credits = ServiceAccountCredentials.from_json_keyfile_name(str(credential_path), scope)
         client = gspread.authorize(credits)
-        return client.open(self.sheet_name).sheet1
+        return client.open_by_key(self.sheet_key).worksheet(self.sheet_name)
 
     def checkDbConnection(self):
         credential_path = self._get_credential_path()
@@ -129,4 +131,73 @@ class SheetDB:
                 },
             )
 
+    # ambil content status draft yang belum diproses (status kosong atau draft)
+    def getDraftContentData(self):
+        credential_path = self._get_credential_path()
+
+        if not credential_path.exists():
+            return response_template(
+                status='error',
+                message=f'Credential file tidak ditemukan: {credential_path}',
+                data=[],
+                meta={
+                    'sheet_name': self.sheet_name,
+                    'credential_path': str(credential_path),
+                },
+            )
+
+        try:
+            sheet = self._get_sheet_instance(credential_path)
+            rows = sheet.get_all_values()
+
+            if not rows:
+                return response_template(
+                    status='success',
+                    message='Sheet kosong',
+                    data=[],
+                    meta={
+                        'sheet_name': self.sheet_name,
+                        'record_count': 0,
+                    },
+                )
+
+            headers = rows[0]
+            status_index = headers.index('status') if 'status' in headers else -1
+
+            filtered_rows = []
+            for row_number, row_values in enumerate(rows[1:], start=2):
+                row_data = {
+                    header: row_values[idx] if idx < len(row_values) else ''
+                    for idx, header in enumerate(headers)
+                }
+
+                status_value = ''
+                if status_index >= 0 and status_index < len(row_values):
+                    status_value = str(row_values[status_index]).strip().lower()
+
+                if status_value in ('', 'draft'):
+                    row_data['_row_number'] = row_number
+                    filtered_rows.append(row_data)
+
+            return response_template(
+                status='success',
+                message='Data draft berhasil diambil',
+                data=filtered_rows,
+                meta={
+                    'sheet_name': self.sheet_name,
+                    'record_count': len(filtered_rows),
+                },
+            )
+        except Exception as err:
+            return response_template(
+                status='error',
+                message=str(err),
+                data=[],
+                meta={
+                    'sheet_name': self.sheet_name,
+                    'credential_path': str(credential_path),
+                },
+            )
+
+    # update status content and antoher after publish content
     

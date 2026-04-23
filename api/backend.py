@@ -30,8 +30,9 @@ class SociamediaPostBackend:
             'request_id': post_data.get('request_id', ''),
         }
 
-        if post_data.get('image_urls'):
-            payload['image_urls'] = post_data.get('image_urls')
+        image_urls = self._normalize_image_urls(post_data.get('image_urls'))
+        if image_urls:
+            payload['image_urls'] = image_urls
         if post_data.get('video_url'):
             payload['video_url'] = post_data.get('video_url')
         if str(post_data.get('dry_run', '')).strip() != '':
@@ -53,3 +54,20 @@ class SociamediaPostBackend:
             return response_template('success', 'Post sent successfully', data=response.json())
         except requests.exceptions.RequestException as e:
             return response_template('error', 'Failed to send post', data=str(e))
+
+    def _normalize_image_urls(self, image_urls):
+        if not image_urls:
+            return []
+
+        if isinstance(image_urls, list):
+            return [str(url).strip() for url in image_urls if str(url).strip()]
+
+        raw_urls = str(image_urls).strip()
+        if not raw_urls:
+            return []
+
+        # Format di sheet dipisahkan dengan titik koma (;)
+        if ';' in raw_urls:
+            return [url.strip() for url in raw_urls.split(';') if url.strip()]
+
+        return [raw_urls]
